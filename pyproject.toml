@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "quara-creds"
+version = "0.1.0"
+description = ""
+authors = ["charbonnierg <guillaume.charbonnier@araymond.com>"]
+readme = "README.md"
+packages = [{ include = "quara", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+cryptography = "*"
+protobuf = "<3.21"
+
+
+[tool.poetry.group.dev.dependencies]
+mypy = "*"
+pytest = "*"
+flake8 = "*"
+isort = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
