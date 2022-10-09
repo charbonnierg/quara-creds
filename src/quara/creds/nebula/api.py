@@ -3,7 +3,9 @@ import secrets
 import typing as t
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from ipaddress import ip_interface
 from pathlib import Path
+from time import time
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
@@ -11,7 +13,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PublicKey
 
-from . import cert_pb2
+from .errors import InvalidCertificateError, InvalidSigningOptionError
+from .proto import cert_pb2
 from .utils import (
     create_ed25519_private_key,
     create_x25519_private_key,
@@ -22,6 +25,7 @@ from .utils import (
     get_private_key_bytes,
     get_public_key_bytes,
     get_relative_timestamp,
+    parse_duration,
 )
 
 
@@ -41,12 +45,12 @@ class Certificate:
     Ips: t.List[str]
     Subnets: t.List[str]
     IsCA: bool
-    Issuer: str
+    Issuer: bytes = field(repr=False)
     NotBefore: int
     NotAfter: int
-    PublicKey: bytes
-    Fingerprint: str
-    Signature: bytes
+    PublicKey: bytes = field(repr=False)
+    Fingerprint: str = field(repr=False)
+    Signature: bytes = field(repr=False)
 
     def get_activation_timestamp(self) -> datetime:
         """Get activation timestamp as a datetime instance.
@@ -79,27 +83,6 @@ class Certificate:
             raise TypeError("A CA certificate does not have an IP addess")
         return self.Ips[0]
 
-    def verify(self, ca_crt: t.Union["Certificate", bytes]) -> None:
-        """Verify that certificate is valid, I.E:
-        - signature is valid
-        - activation timestamp is smaller than current timestamp
-        - expiration timestamps is greater than current timestmap
-        """
-        # Parse certificate a first time
-        if not isinstance(ca_crt, Certificate):
-            ca_crt = Certificate.from_bytes(ca_crt)
-        # Serialize certificate to string a second time
-        details = self._to_raw_cert_details().SerializeToString()
-        # Verify signature
-        ca_crt.get_public_key().verify(self.Signature, details)
-        now = datetime.now(timezone.utc)
-        # Verify activation timestamp
-        if now < self.get_activation_timestamp():
-            raise ValueError("Certificate is not valid yet")
-        # Verify expiration timestamp
-        if now >= self.get_expiration_timestamp():
-            raise ValueError("Certificate is expired")
-
     @classmethod
     def _from_bytes(cls, data: bytes) -> "Certificate":
         """Create a new Certificate instance from bytes."""
@@ -126,16 +109,16 @@ class Certificate:
                 is_mask = False
                 subnets.append(decode_ip_address(address, mask))
         return Certificate(
-            Name=cert.Details.Name,
-            NotAfter=cert.Details.NotAfter,
-            NotBefore=cert.Details.NotBefore,
-            Groups=cert.Details.Groups,
-            IsCA=cert.Details.IsCA,
-            Ips=ips,
-            Subnets=subnets,
-            Issuer=cert.Details.Issuer,
-            PublicKey=cert.Details.PublicKey,
-            Signature=cert.Signature,
+            Name=str(cert.Details.Name),
+            NotAfter=int(cert.Details.NotAfter),
+            NotBefore=int(cert.Details.NotBefore),
+            Groups=[str(group) for group in cert.Details.Groups],
+            IsCA=bool(cert.Details.IsCA),
+            Ips=[str(ip) for ip in ips],
+            Subnets=[str(subnet) for subnet in subnets],
+            Issuer=bytes(cert.Details.Issuer),
+            PublicKey=bytes(cert.Details.PublicKey),
+            Signature=bytes(cert.Signature),
             Fingerprint=hashlib.sha256(data).hexdigest(),
         )
 
@@ -197,7 +180,12 @@ class Certificate:
 
     def to_dict(self) -> t.Dict[str, t.Any]:
         """Export nebula certificate as a dictionary"""
-        return asdict(self)
+        data = asdict(self)
+        data["PublicKey"] = self.PublicKey.hex()
+        data["Signature"] = self.Signature.hex()
+        data["Issuer"] = self.Issuer.hex()
+        data.pop("Fingerprint", None)
+        return data
 
     def to_bytes(self) -> bytes:
         """Export nebula certificate to bytes."""
@@ -215,8 +203,12 @@ class Certificate:
     def write_pem_file(self, filepath: t.Union[str, Path]) -> Path:
         """Write certificate to file in PEM format"""
         output = Path(filepath).expanduser()
+        output.parent.mkdir(exist_ok=True, parents=True)
         output.write_bytes(self.to_pem_data())
         return output.resolve(True)
+
+    def nice_repr(self) -> str:
+        return f"""Name='{self.Name}', Groups={self.Groups}, Ips={self.Ips}, Subnets={self.Subnets}, NotBefore={self.get_activation_timestamp().isoformat()}, NotAfter={self.get_expiration_timestamp().isoformat()}"""
 
 
 class SigningKeyPair:
@@ -340,6 +332,11 @@ class EncryptionKeyPair:
         output.write_bytes(self.to_public_pem_data())
         return output
 
+    def __eq__(self, other: t.Any) -> bool:
+        if isinstance(other, EncryptionKeyPair):
+            return other.get_private_bytes() == self.get_private_bytes()
+        return False
+
 
 class PublicEncryptionKey:
     """Public encryption keys are X25519 public keys.
@@ -437,6 +434,114 @@ class SigningCAOptions:
     Subnets: t.List[str] = field(default_factory=list)
 
 
+def verify_certificate(ca_crt: Certificate, crt: Certificate) -> None:
+    """Verify that certificate is valid, I.E:
+    - signature is valid
+    - activation timestamp is smaller than current timestamp
+    - expiration timestamps is greater than current timestmap
+    """
+    # Parse certificate a first time
+    if not isinstance(ca_crt, Certificate):
+        ca_crt = Certificate.from_bytes(ca_crt)
+    # Serialize certificate to string a second time
+    details = crt._to_raw_cert_details().SerializeToString()
+    # Verify signature
+    ca_crt.get_public_key().verify(crt.Signature, details)
+    now = time()
+    # Verify activation timestamp
+    if now < crt.NotBefore:
+        raise InvalidCertificateError("Certificate is not valid yet")
+    # Verify expiration timestamp
+    if now >= crt.NotAfter:
+        raise InvalidCertificateError("Certificate is expired")
+    # Verify groups
+    for group in crt.Groups:
+        if group not in ca_crt.Groups:
+            raise InvalidCertificateError(
+                f"Certificate group not present in CA cert: {group}"
+            )
+    # Check that certificate has a single IP
+    if len(crt.Ips) != 1:
+        raise InvalidCertificateError(
+            "A node certificate must have a single IP address"
+        )
+    # Check that cert IP is valid
+    if ca_crt.Ips:
+        for ip in ca_crt.Ips:
+            iface = ip_interface(ip)
+            network = iface.network
+            if ip_interface(crt.Ips[0]) in network:
+                break
+        else:
+            raise InvalidCertificateError(
+                f"Certificate contains an ip assignment ({crt.Ips[0]}) outside the limitations of the CA: {ca_crt.Ips}"
+            )
+    # Check that cert subnets are valid
+    for subnet in crt.Subnets:
+        iface = ip_interface(subnet)
+        for ca_subnet in ca_crt.Subnets:
+            ca_iface = ip_interface(ca_subnet)
+            network = ca_iface.network
+            if iface in network:
+                break
+        else:
+            raise InvalidCertificateError(
+                f"Certificate contains a subnet assignment ({subnet}) outside the limitations of the CA: {ca_crt.Subnets}"
+            )
+
+
+def verify_signing_options(options: SigningOptions, ca_crt: Certificate) -> None:
+    """Check that signing options match CA certificate constraints"""
+    # Check activation timestamp
+    activation = time() + parse_duration(options.NotBefore)
+    if ca_crt.NotBefore > activation:
+        raise InvalidSigningOptionError(
+            "CA certificate is active after NotBefore signing option"
+        )
+    # Check expiration timestamp
+    deadline = time() + parse_duration(options.NotAfter)
+    if ca_crt.NotAfter < deadline:
+        raise InvalidSigningOptionError(
+            "CA certificate expires before NotAfter signing option. "
+            f"CA expires on {ca_crt.get_expiration_timestamp().isoformat()} but "
+            f"cert is expected to expire on {datetime.fromtimestamp(deadline, tz=timezone.utc).isoformat()}."
+        )
+    # Verify groups
+    for group in options.Groups:
+        if group not in ca_crt.Groups:
+            raise InvalidSigningOptionError(
+                f"Signing options contain a group ('{group}') assignment outside the limitation of the CA: {ca_crt.Groups}"
+            )
+    # Check that certificate has a single IP
+    try:
+        target_ip = ip_interface(options.Ip)
+    except Exception as exc:
+        raise InvalidSigningOptionError("Invalid IP address") from exc
+    # Check that cert IP is valid
+    if ca_crt.Ips:
+        for ip in ca_crt.Ips:
+            iface = ip_interface(ip)
+            network = iface.network
+            if target_ip in network:
+                break
+        else:
+            raise InvalidSigningOptionError(
+                f"Signing options contain an ip assignment ({options.Ip}) outside the limitations of the CA: {ca_crt.Ips}"
+            )
+    # Check that cert subnets are valid
+    for subnet in options.Subnets:
+        iface = ip_interface(subnet)
+        for ca_subnet in ca_crt.Subnets:
+            ca_iface = ip_interface(ca_subnet)
+            network = ca_iface.network
+            if iface in network:
+                break
+        else:
+            raise InvalidSigningOptionError(
+                f"Signing options contain a subnet assignment ({subnet}) outside the limitations of the CA: {ca_crt.Subnets}"
+            )
+
+
 def sign_cert(
     ca_crt: Certificate,
     ca_key: SigningKeyPair,
@@ -454,6 +559,24 @@ def sign_cert(
     Returns:
         A Certificate instance.
     """
+    # Check expiration timestamp
+    if ca_crt.NotAfter < time() + parse_duration(options.NotAfter):
+        raise ValueError("CA certificate expires before node certificate")
+    # Check groups
+    for group in options.Groups:
+        if group not in ca_crt.Groups:
+            raise ValueError(f"Invalid group (not present in CA cert): {group}")
+    # Check that certificate IP is valid
+    if not options.Ip:
+        raise ValueError("IP address must be provided in SigningOptions")
+    crt_ip = options.Ip
+    for ip in ca_crt.Ips:
+        iface = ip_interface(ip)
+        network = iface.network
+        if ip_interface(crt_ip) not in network:
+            raise ValueError(
+                f"IP address does not match subnet. IP: {crt_ip} | Subnet: {ip}"
+            )
     # Create protobuf objects
     cert = cert_pb2.RawNebulaCertificate()
     cert_details = cert_pb2.RawNebulaCertificateDetails()

@@ -1,5 +1,94 @@
 # QUARA Creds
 
+## CLI usage
+
+### Display help
+
+Several subcommands are available. The `--help` option is available at different levels:
+
+```bash
+# General help
+pync --help
+# cert command group help
+pync cert --help
+# cert sign subcommand help
+pync cert sign --help
+```
+
+### Initialize environment
+
+- Initialize with default configuration
+
+```bash
+pync init
+```
+
+- Reset configuration
+
+```bash
+pync init --force
+```
+
+- Configure authorities from a JSON file (either a path or an URL):
+
+```bash
+pync init --authorities https://devquanebulajqtcetlst0.blob.core.windows.net/authorities/.well_known/authorities.json
+```
+
+
+### Manage keypairs
+
+- Create a new keypair for current user:
+
+```bash
+pync key gen
+```
+
+- Create a new keypair for a different user:
+
+```bash
+pync key gen -n test
+```
+
+- List available keypairs
+
+```bash
+pync key list
+```
+
+- Display a public key
+
+```bash
+pync key show -n test
+```
+
+- Display a private key
+
+```bash
+pync key show -n test --private
+```
+
+### Manager certificate authorities
+
+- List available authorities:
+
+```bash
+pync ca list
+```
+
+- Show authorities details:
+
+```bash
+pync ca show
+```
+
+- Show authorities certificates:
+
+```bash
+pync ca show --pem
+```
+
+
 ## Nebula certs examples
 
 #### Create a new CA and a sign a new certificate
@@ -11,6 +100,7 @@ from quara.creds.nebula import (
     SigningOptions,
     sign_ca,
     sign_cert,
+    verify_certificate,
 )
 
 # Create a new CA
@@ -34,7 +124,7 @@ new_crt.write_pem_file("node.crt")
 enc_keypair.write_private_key("node.key")
 enc_keypair.write_public_key("node.pub")
 # Verify that the certificate is valid
-new_crt.verify(ca_crt)
+verify_certificate(ca_crt=ca_crt, crt=new_crt)
 ```
 
 This example generates 5 files:
@@ -48,11 +138,12 @@ This example generates 5 files:
 
 ```python
 from quara.creds.nebula import (
-    EncryptionKeyPair,
     Certificate,
+    EncryptionKeyPair,
     SigningKeyPair,
     SigningOptions,
     sign_cert,
+    verify_certificate,
 )
 
 # Load CA certificate
@@ -76,7 +167,7 @@ new_crt.write_pem_file("node.crt")
 enc_keypair.write_private_key("node.key")
 enc_keypair.write_public_key("node.pub")
 # Verify that the certificate is valid
-new_crt.verify(ca_crt)
+verify_certificate(ca_crt=ca_crt, crt=new_crt)
 ```
 
 In this case, only 3 files are created, as the CA certificate and the CA key already existed before.
@@ -90,6 +181,7 @@ from quara.creds.nebula import (
     SigningKeyPair,
     SigningOptions,
     sign_cert,
+    verify_certificate,
 )
 
 # Load CA certificate
@@ -111,7 +203,7 @@ new_crt = sign_cert(
 # Write files to disk
 new_crt.write_pem_file("node.crt")
 # Verify that the certificate is valid
-new_crt.verify(ca_crt)
+verify_certificate(ca_crt=ca_crt, crt=new_crt)
 ```
 
 In this case, only the certificate file is written to disk, as all other information was known before issuing the certificate.

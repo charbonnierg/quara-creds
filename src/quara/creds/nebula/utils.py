@@ -4,6 +4,7 @@ import ipaddress
 import secrets
 import time
 import typing as t
+from textwrap import wrap
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -68,7 +69,10 @@ def decode_pem(pem_data: t.Union[str, bytes], encoding: str = "utf-8") -> bytes:
 
 
 def encode_pem(
-    value: t.Union[str, bytes], format: str, encoding: str = "utf-8"
+    value: t.Union[str, bytes],
+    format: str,
+    encoding: str = "utf-8",
+    width: t.Optional[int] = 64,
 ) -> bytes:
     """Encode some bytes into PEM format.
 
@@ -78,6 +82,8 @@ def encode_pem(
     if isinstance(value, str):
         value = value.encode(encoding)
     encoded_value = base64.b64encode(value).decode("utf-8")
+    if width:
+        encoded_value = "\n".join(wrap(encoded_value, width=width))
     pem_str = f"""{BANNER_TAG}BEGIN {format}{BANNER_TAG}\n{encoded_value}\n{BANNER_TAG}END {format}{BANNER_TAG}"""
     return pem_str.encode(encoding)
 

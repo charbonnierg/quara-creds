@@ -1,4 +1,4 @@
-from .cert import (
+from .api import (
     Certificate,
     EncryptionKeyPair,
     PublicEncryptionKey,
@@ -8,11 +8,16 @@ from .cert import (
     SigningOptions,
     sign_ca,
     sign_cert,
+    verify_certificate,
+    verify_signing_options,
 )
+from .errors import InvalidCertificateError, InvalidSigningOptionError
 
 __all__ = [
-    "EncryptionKeyPair",
     "Certificate",
+    "EncryptionKeyPair",
+    "InvalidCertificateError",
+    "InvalidSigningOptionError",
     "PublicEncryptionKey",
     "PublicSigningKey",
     "SigningCAOptions",
@@ -20,4 +25,9 @@ __all__ = [
     "SigningOptions",
     "sign_ca",
     "sign_cert",
+    "verify_certificate",
+    "verify_signing_options",
 ]
+
+
+__version__ = "0.10.0"

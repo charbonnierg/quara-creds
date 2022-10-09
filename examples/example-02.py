@@ -4,6 +4,7 @@ from quara.creds.nebula import (
     SigningKeyPair,
     SigningOptions,
     sign_cert,
+    verify_certificate,
 )
 
 # Load CA certificate
@@ -27,4 +28,4 @@ new_crt.write_pem_file("node.crt")
 enc_keypair.write_private_key("node.key")
 enc_keypair.write_public_key("node.pub")
 # Verify that the certificate is valid
-new_crt.verify(ca_crt)
+verify_certificate(ca_crt=ca_crt, crt=new_crt)

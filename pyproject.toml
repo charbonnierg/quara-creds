@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quara-creds"
-version = "0.1.0"
+version = "0.10.0"
 description = ""
 authors = ["charbonnierg <guillaume.charbonnier@araymond.com>"]
 readme = "README.md"
@@ -10,13 +10,21 @@ packages = [{ include = "quara", from = "src" }]
 python = "^3.7"
 cryptography = "*"
 protobuf = "<3.21"
+typer = "*"
+Jinja2 = "*"
+azure-keyvault-secrets = "*"
+azure-identity = "*"
+rich = "*"
 
+[tool.poetry.scripts]
+pync = "quara.creds.cli:app"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "*"
 pytest = "*"
 flake8 = "*"
 isort = "*"
+types-requests = "*"
 
 [build-system]
 requires = ["poetry-core"]
