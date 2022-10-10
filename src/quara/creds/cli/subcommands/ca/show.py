@@ -1,4 +1,4 @@
-"""pync nebula ca show CLI command"""
+"""pync ca show CLI command"""
 import typing as t
 from json import dumps
 

@@ -1,7 +1,7 @@
 import typing as t
 
 from quara.creds.manager.interfaces.keystore import CAKeyStore
-from quara.creds.nebula import SigningKeyPair
+from quara.creds.nebula.interfaces import SigningKeyPair
 
 
 class AzureCAKeyStore(CAKeyStore):

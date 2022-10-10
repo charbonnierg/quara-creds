@@ -98,17 +98,17 @@ from quara.creds.nebula import (
     EncryptionKeyPair,
     SigningCAOptions,
     SigningOptions,
-    sign_ca,
-    sign_cert,
+    sign_ca_certificate,
+    sign_certificate,
     verify_certificate,
 )
 
 # Create a new CA
-ca_keypair, ca_crt = sign_ca(options=SigningCAOptions(Name="test"))
+ca_keypair, ca_crt = sign_ca_certificate(options=SigningCAOptions(Name="test"))
 # Create a new keypair for the certificate
 enc_keypair = EncryptionKeyPair()
 # Sign a new certificate
-new_crt = sign_cert(
+new_crt = sign_certificate(
     ca_key=ca_keypair,
     ca_crt=ca_crt,
     public_key=enc_keypair,
@@ -142,7 +142,7 @@ from quara.creds.nebula import (
     EncryptionKeyPair,
     SigningKeyPair,
     SigningOptions,
-    sign_cert,
+    sign_certificate,
     verify_certificate,
 )
 
@@ -153,7 +153,7 @@ ca_keypair = SigningKeyPair.from_file("ca.key")
 # Create a new keypair for the certificate
 enc_keypair = EncryptionKeyPair()
 # Sign a new certificate
-new_crt = sign_cert(
+new_crt = sign_certificate(
     ca_key=ca_keypair,
     ca_crt=ca_crt,
     public_key=enc_keypair,
@@ -180,7 +180,7 @@ from quara.creds.nebula import (
     PublicEncryptionKey,
     SigningKeyPair,
     SigningOptions,
-    sign_cert,
+    sign_certificate,
     verify_certificate,
 )
 
@@ -191,7 +191,7 @@ ca_keypair = SigningKeyPair.from_file("ca.key")
 # Load public key from file
 pub_key = PublicEncryptionKey.from_file("node.pub")
 # Sign a new certificate
-new_crt = sign_cert(
+new_crt = sign_certificate(
     ca_key=ca_keypair,
     ca_crt=ca_crt,
     public_key=pub_key,

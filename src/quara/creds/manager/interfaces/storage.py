@@ -1,12 +1,20 @@
 import abc
 import typing as t
 
-from quara.creds.nebula import Certificate, EncryptionKeyPair, SigningOptions
+from quara.creds.nebula.interfaces import (
+    CACertificate,
+    EncryptionKeyPair,
+    NodeCertificate,
+    SigningOptions,
+)
+from quara.creds.nebula.interfaces.keys import PublicEncryptionKey
 
 from .authorities import Authorities, Authority, Lighthouses
 
 
 class Store(metaclass=abc.ABCMeta):
+    """A connector to where certificates and encryption keys are stored"""
+
     def get_authority(self, name: str) -> Authority:
         """Get an authority by name"""
         return self.get_authorities()[name]
@@ -36,11 +44,15 @@ class Store(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_signing_certificate(self, authority: str) -> Certificate:
+    def get_public_key(self, name: str) -> PublicEncryptionKey:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_certificate(self, authority: str, name: str) -> Certificate:
+    def get_signing_certificate(self, authority: str) -> CACertificate:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_certificate(self, authority: str, name: str) -> NodeCertificate:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -48,7 +60,7 @@ class Store(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def save_signing_certificate(self, authority: str, cert: Certificate) -> None:
+    def save_signing_certificate(self, authority: str, cert: CACertificate) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -56,7 +68,7 @@ class Store(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def save_certificate(self, authority: str, cert: Certificate) -> None:
+    def save_certificate(self, authority: str, cert: NodeCertificate) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -64,10 +76,30 @@ class Store(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def save_public_key(self, name: str, public_key: PublicEncryptionKey) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def delete_signing_certificate(self, authority: str, name: str) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def delete_signing_request(self, authority: str, name: str) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def delete_certificate(self, authority: str, name: str) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def delete_keypair(self, name: str) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def iterate_certificates(
         self,
         authority: str,
-    ) -> t.Iterator[Certificate]:
+    ) -> t.Iterator[NodeCertificate]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -79,4 +111,8 @@ class Store(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def iterate_keypairs(self) -> t.Iterator[t.Tuple[str, EncryptionKeyPair]]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def iterate_public_keys(self) -> t.Iterator[t.Tuple[str, PublicEncryptionKey]]:
         raise NotImplementedError

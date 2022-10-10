@@ -3,7 +3,7 @@ from quara.creds.nebula import (
     EncryptionKeyPair,
     SigningKeyPair,
     SigningOptions,
-    sign_cert,
+    sign_certificate,
     verify_certificate,
 )
 
@@ -14,7 +14,7 @@ ca_keypair = SigningKeyPair.from_file("ca.key")
 # Create a new keypair
 enc_keypair = EncryptionKeyPair()
 # Sign a new certificate
-new_crt = sign_cert(
+new_crt = sign_certificate(
     ca_key=ca_keypair,
     ca_crt=ca_crt,
     public_key=enc_keypair,

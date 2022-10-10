@@ -1,11 +1,9 @@
-"""pync nebula ca create CLI command"""
+"""pync ca sign CLI command"""
 import typing as t
-from json import loads
-from pathlib import Path
 
 import typer
 
-from quara.creds.nebula import SigningCAOptions, sign_ca
+from quara.creds.nebula.api import create_signing_ca_options, sign_ca_certificate
 
 
 def sign_cmd(
@@ -48,15 +46,6 @@ def sign_cmd(
             "This will limit which subnet addresses and networks subordinate certs can use"
         ),
     ),
-    config_file: t.Optional[str] = typer.Option(
-        None,
-        "--config-file",
-        "-f",
-        help=(
-            "path to a JSON configuration file. "
-            "Options found within file will be used to generate the certificate."
-        ),
-    ),
     out_key: t.Optional[str] = typer.Option(
         None,
         "--out-key",
@@ -74,26 +63,14 @@ def sign_cmd(
     ),
 ) -> None:
     """Create a CA certificate."""
-    # if config is not None:
-    #     manager = NebulaCertManager.from_config_file(config)
-    # else:
-    #     manager = NebulaCertManager.from_root(root)
-    if config_file:
-        try:
-            data = loads(Path(config_file).read_bytes())
-            options = SigningCAOptions(**data)
-        except Exception as exc:
-            typer.echo(f"Invalid signing options: {str(exc)}", err=True)
-            raise typer.Exit(1)
-    else:
-        options = SigningCAOptions(
-            Name=name,
-            Ips=ips.split(",") if ips else [],
-            NotAfter=duration,
-            Groups=groups.split(",") if groups else [],
-            Subnets=subnets.split(",") if subnets else [],
-        )
-    keypair, ca = sign_ca(options)
+    options = create_signing_ca_options(
+        name=name,
+        ips=ips,
+        duration=duration,
+        groups=groups,
+        subnets=subnets,
+    )
+    keypair, ca = sign_ca_certificate(options)
     if out_key is None:
         out_key = f"{name}.key"
     keypair.write_private_key(out_key)

@@ -1,10 +1,14 @@
-"""pync nebula verify CLI command"""
+"""pync cert verify command"""
 import typing as t
 
 import typer
 
 from quara.creds.cli.utils import get_manager
-from quara.creds.nebula import Certificate, InvalidCertificateError, verify_certificate
+from quara.creds.nebula.api import (
+    InvalidCertificateError,
+    read_node_certificate,
+    verify_certificate,
+)
 
 
 def verify_cmd(
@@ -36,7 +40,7 @@ def verify_cmd(
         authorities = [authority]
     if path is not None:
         try:
-            crt = Certificate.from_file(path)
+            crt = read_node_certificate(path)
         except FileNotFoundError:
             typer.echo(f"Certificate not found: {path}")
             raise typer.Exit(1)

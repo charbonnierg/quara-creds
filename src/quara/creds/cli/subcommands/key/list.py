@@ -1,4 +1,4 @@
-"""pync nebula key list CLI command"""
+"""pync key list command"""
 import typing as t
 from json import dumps
 
@@ -29,21 +29,30 @@ def list_cmd(
     table = Table(title="Nebula X25519 keypairs")
     table.add_column("Name", justify="left")
     table.add_column("Public key", justify="left")
+    table.add_column("Private key is stored", justify="left")
     if json:
         results: t.List[t.Dict[str, str]] = []
         for name, keypair in manager.storage.iterate_keypairs():
             results.append(
                 {
                     "name": name,
-                    "public_key": keypair.get_public_bytes().hex(),
+                    "public_key": keypair.to_public_bytes().hex(),
+                }
+            )
+        for name, pubkey in manager.storage.iterate_public_keys():
+            results.append(
+                {
+                    "name": name,
+                    "public_key": pubkey.to_public_bytes().hex(),
                 }
             )
         typer.echo(dumps(results, indent=2))
         raise typer.Exit(0)
 
     for name, keypair in manager.storage.iterate_keypairs():
-        table.add_row(name, keypair.get_public_bytes().hex())
-
+        table.add_row(name, keypair.to_public_bytes().hex(), "Yes")
+    for name, pubkey in manager.storage.iterate_public_keys():
+        table.add_row(name, pubkey.to_public_bytes().hex(), "No")
     console.print(table)
 
     raise typer.Exit(0)

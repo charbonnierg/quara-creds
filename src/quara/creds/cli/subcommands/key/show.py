@@ -1,4 +1,4 @@
-"""pync nebula key show CLI command"""
+"""pync key show command"""
 import typing as t
 
 import typer
@@ -36,9 +36,9 @@ def show_cmd(
         raise typer.Exit(1)
     if raw:
         if not private:
-            typer.echo(keypair.get_public_bytes().hex())
+            typer.echo(keypair.to_public_bytes().hex())
         else:
-            typer.echo(keypair.get_private_bytes().hex())
+            typer.echo(keypair.to_private_bytes().hex())
     else:
         if not private:
             typer.echo(keypair.to_public_pem_data().decode("utf-8"))

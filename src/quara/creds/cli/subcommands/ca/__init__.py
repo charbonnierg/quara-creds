@@ -8,7 +8,7 @@ app = typer.Typer(
     name="ca",
     no_args_is_help=True,
     add_completion=False,
-    help="Manager nebula CA certificates",
+    help="Manage nebula CA certificates",
 )
 
 app.command("show")(show_cmd)

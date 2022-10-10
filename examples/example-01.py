@@ -2,19 +2,19 @@ from quara.creds.nebula import (
     EncryptionKeyPair,
     SigningCAOptions,
     SigningOptions,
-    sign_ca,
-    sign_cert,
+    sign_ca_certificate,
+    sign_certificate,
     verify_certificate,
 )
 
 # Create a new CA
-ca_keypair, ca_crt = sign_ca(options=SigningCAOptions(Name="test"))
+ca_keypair, ca_crt = sign_ca_certificate(options=SigningCAOptions(Name="test"))
 
 # Create a new keypair
 enc_keypair = EncryptionKeyPair()
 
 # Sign a new certificate
-new_crt = sign_cert(
+new_crt = sign_certificate(
     ca_key=ca_keypair,
     ca_crt=ca_crt,
     public_key=enc_keypair,

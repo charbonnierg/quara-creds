@@ -1,6 +1,5 @@
-"""pync nebula ca list CLI command"""
+"""pync ca list CLI command"""
 import typing as t
-from textwrap import wrap
 
 import typer
 from rich.console import Console
@@ -41,8 +40,8 @@ def list_cmd(
         table.add_row(
             authority,
             cert.Name,
-            "\n".join(wrap(" ".join(cert.Ips), width=18, break_long_words=False)),
-            "\n".join(wrap(" ".join(cert.Groups), width=20, break_long_words=False)),
+            ", ".join(cert.Ips),
+            ", ".join(cert.Groups),
             cert.get_expiration_timestamp().isoformat(),
             cert.PublicKey.hex(),
         )

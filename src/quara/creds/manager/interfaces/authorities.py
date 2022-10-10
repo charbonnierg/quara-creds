@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from json import loads
 from pathlib import Path
 
-from quara.creds.nebula import SigningKeyPair
+from quara.creds.nebula.interfaces import SigningKeyPair
 
 
 class Lighthouses(t.Dict[str, t.Dict[str, t.List[str]]]):

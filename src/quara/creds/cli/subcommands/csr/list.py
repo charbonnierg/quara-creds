@@ -1,4 +1,4 @@
-"""pync cert list command"""
+"""pync csr list command"""
 import typing as t
 from collections import defaultdict
 
@@ -26,7 +26,7 @@ def list_cmd(
         None, "--ca", help="Name of CA used to sign the certificate"
     ),
 ) -> None:
-    """List certificates"""
+    """List certificate signing requests"""
     if config is not None:
         manager = NebulaCertManager.from_config_file(config)
     else:
@@ -37,9 +37,7 @@ def list_cmd(
     table.add_column("IP")
     table.add_column("Groups")
     table.add_column("Subnets")
-    table.add_column("Not Before")
-    table.add_column("Not After")
-    table.add_column("Public Key")
+    table.add_column("Duration")
 
     if authority is None:
         authorities = list(manager.authorities)
@@ -49,17 +47,17 @@ def list_cmd(
     user_rows: t.Dict[str, t.List[t.Tuple[str, ...]]] = defaultdict(list)
 
     for authority in authorities:
-        for cert in manager.storage.iterate_certificates(authority=authority):
-            user_rows[cert.Name].append(
+        for options in manager.storage.iterate_certificate_requests(
+            authority=authority
+        ):
+            user_rows[options.Name].append(
                 (
                     authority,
-                    cert.Name,
-                    cert.get_ip_address(),
-                    ", ".join(cert.Groups),
-                    ", ".join(cert.Subnets) or "*",
-                    cert.get_activation_timestamp().isoformat(),
-                    cert.get_expiration_timestamp().isoformat(),
-                    cert.PublicKey.hex(),
+                    options.Name,
+                    options.Ip,
+                    ", ".join(options.Groups),
+                    ", ".join(options.Subnets) or "*",
+                    options.NotAfter,
                 )
             )
 

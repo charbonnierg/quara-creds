@@ -1,6 +1,6 @@
 import abc
 
-from quara.creds.nebula import SigningKeyPair
+from quara.creds.nebula.interfaces import SigningKeyPair
 
 
 class CAKeyStore(metaclass=abc.ABCMeta):

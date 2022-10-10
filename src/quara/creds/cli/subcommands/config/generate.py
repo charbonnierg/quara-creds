@@ -1,4 +1,4 @@
-"""pync nebula config template CLI command"""
+"""pync config gen command"""
 import typing as t
 from pathlib import Path
 
@@ -6,7 +6,7 @@ import typer
 from jinja2 import Environment, FileSystemLoader
 
 from quara.creds.cli.utils import get_manager
-from quara.creds.nebula import EncryptionKeyPair
+from quara.creds.nebula.api import create_encryption_keypair
 
 TEMPLATE_ROOT = Path(__file__).parent / "data"
 TEMPLATE_LOADER = FileSystemLoader(searchpath=TEMPLATE_ROOT)
@@ -41,7 +41,7 @@ def generate_cmd(
     try:
         keypair = manager.storage.get_keypair(name)
     except FileNotFoundError:
-        keypair = EncryptionKeyPair()
+        keypair = create_encryption_keypair()
         manager.storage.save_keypair(name, keypair)
     # Merge authorities and certificates
     ca_crt = b""
@@ -60,6 +60,16 @@ def generate_cmd(
         except FileNotFoundError:
             typer.echo(
                 f"No certificate issued by authority {authority} for user {name}"
+            )
+            raise typer.Exit(1)
+        if certificate.get_public_key().to_public_bytes() != keypair.to_public_bytes():
+            typer.echo(
+                "Error: certificate public key does not match user public key.",
+                err=True,
+            )
+            typer.echo(
+                f"You can regenerate the certificate using `pync cert sign -n {name}` command.",
+                err=True,
             )
             raise typer.Exit(1)
         if not crt:

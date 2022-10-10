@@ -1,13 +1,14 @@
-"""pync key gen command"""
+"""pync key import command"""
 import typing as t
+from pathlib import Path
 
 import typer
 
 from quara.creds.cli.utils import get_manager
-from quara.creds.nebula.api import create_encryption_keypair
+from quara.creds.nebula.api import parse_encryption_keypair, read_encryption_keypair
 
 
-def gen_cmd(
+def import_cmd(
     root: t.Optional[str] = typer.Option(
         None, "--root", "-r", help="Nebula root directory", envvar="PYNC_NEBULA_ROOT"
     ),
@@ -24,14 +25,27 @@ def gen_cmd(
         "-n",
         help="Keypair name. Current username is used when not provided.",
     ),
+    private_key: str = typer.Option(
+        ...,
+        "--key",
+        "-k",
+        help="Private bytes or path to private key",
+    ),
     force: bool = typer.Option(
         False, "--force", "-f", help="Overwrite files if they already exist."
     ),
 ) -> None:
-    """Create a new public key and associated private key"""
+    """Import an existing keypair using private bytes or path to private key file"""
     manager = get_manager(config, root)
+    try:
+        if Path(private_key).exists():
+            keypair = read_encryption_keypair(private_key)
+        else:
+            keypair = parse_encryption_keypair(private_key)
+    except Exception as exc:
+        typer.echo(f"Failed to load keypair: {str(exc)}", err=True)
+        raise typer.Exit(1)
 
-    keypair = create_encryption_keypair()
     name = name or manager.default_user
     try:
         manager.storage.get_keypair(name)

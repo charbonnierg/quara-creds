@@ -1,5 +1,7 @@
-"""pync cert show command"""
+"""pync csr show command"""
 import typing as t
+from collections import defaultdict
+from dataclasses import asdict
 from json import dumps
 
 import typer
@@ -26,17 +28,11 @@ def show_cmd(
         None, "--ca", help="Name of CA used to sign the certificate"
     ),
     name: t.Optional[str] = typer.Option(None, "--name", "-n", help="Certificate name"),
-    pem: bool = typer.Option(
-        False,
-        "--pem",
-        help="Display certificate in PEM format",
-    ),
-    raw: bool = typer.Option(False, "--raw", help="Display raw certificate"),
     json: bool = typer.Option(False, "--json", help="Display JSON certificate"),
 ) -> None:
-    """Describe a certificate.
+    """Describe a signing certificate.
 
-    When --raw option certificate, the raw certificate is printed.
+    When --json option is provided, JSON output is printed.
     """
     manager = get_manager(config, root)
 
@@ -46,46 +42,30 @@ def show_cmd(
         authorities = [authority]
     name = name or manager.default_user
     found = False
-    json_result: t.List[t.Dict[str, t.Any]] = []
+    json_result: t.Dict[str, t.List[t.Dict[str, t.Any]]] = defaultdict(list)
     for authority in authorities:
         try:
-            cert = manager.storage.get_certificate(authority=authority, name=name)
+            options = manager.storage.get_signing_request(
+                authority=authority, name=name
+            )
         except FileNotFoundError:
             continue
         else:
             found = True
-        if pem:
-            typer.echo(cert.to_pem_data().decode("utf-8"))
-            continue
-        elif raw:
-            typer.echo(cert.to_bytes().hex())
-            continue
-        elif json:
-            json_result.append(cert.to_dict())
+        if json:
+            json_result[authority].append(asdict(options))
             continue
         else:
-            table = Table(title=f"Nebula certificate (authority={authority})")
+            table = Table(title=f"Signing options (authority={authority})")
             table.add_column("Field")
             table.add_column("Value")
-            for key, value in cert.to_dict().items():
-                if key == "IsCA":
-                    continue
-                elif key == "Signature":
-                    continue
-                elif key == "NotAfter":
-                    key = "Expiration"
-                    value = cert.get_expiration_timestamp().isoformat()
-                elif key == "NotBefore":
-                    key = "Activation"
-                    value = cert.get_activation_timestamp().isoformat()
+            for key, value in asdict(options).items():
                 table.add_row(key, str(value))
-            table.add_section()
-            table.add_row("Signature", cert.Signature.hex())
             console.print(table)
     if json_result:
         console.print(dumps(json_result, indent=2))
     if not found:
-        typer.echo(f"Certificate not found: {name}", err=True)
+        typer.echo(f"Certificate request not found: {name}", err=True)
         raise typer.Exit(1)
 
     raise typer.Exit(0)

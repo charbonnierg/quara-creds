@@ -1,33 +1,30 @@
-from .api import (
-    Certificate,
+"""Nebula creds API"""
+from .errors import InvalidCertificateError, InvalidSigningOptionError
+from .interfaces import (
+    CACertificate,
     EncryptionKeyPair,
-    PublicEncryptionKey,
-    PublicSigningKey,
+    NodeCertificate,
     SigningCAOptions,
     SigningKeyPair,
     SigningOptions,
-    sign_ca,
-    sign_cert,
-    verify_certificate,
-    verify_signing_options,
 )
-from .errors import InvalidCertificateError, InvalidSigningOptionError
 
 __all__ = [
-    "Certificate",
+    "CACertificate",
     "EncryptionKeyPair",
     "InvalidCertificateError",
     "InvalidSigningOptionError",
+    "NodeCertificate",
     "PublicEncryptionKey",
     "PublicSigningKey",
     "SigningCAOptions",
     "SigningKeyPair",
     "SigningOptions",
-    "sign_ca",
-    "sign_cert",
+    "sign_ca_certificate",
+    "sign_certificate",
     "verify_certificate",
     "verify_signing_options",
 ]
 
 
-__version__ = "0.10.0"
+__version__ = "0.10.1"

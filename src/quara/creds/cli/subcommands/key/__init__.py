@@ -1,8 +1,9 @@
 import typer
 
 from .gen import gen_cmd
+from .import_ import import_cmd
 from .list import list_cmd
-from .scp import scp_cmd
+from .rm import rm_cmd
 from .show import show_cmd
 
 app = typer.Typer(
@@ -16,4 +17,5 @@ app = typer.Typer(
 app.command("list")(list_cmd)
 app.command("gen")(gen_cmd)
 app.command("show")(show_cmd)
-app.command("scp")(scp_cmd)
+app.command("rm")(rm_cmd)
+app.command("import")(import_cmd)

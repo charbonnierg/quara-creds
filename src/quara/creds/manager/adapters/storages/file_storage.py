@@ -5,9 +5,14 @@ from pathlib import Path
 
 import requests
 
-from quara.creds.manager.interfaces.authorities import Authorities
-from quara.creds.manager.interfaces.storage import Store
-from quara.creds.nebula import Certificate, EncryptionKeyPair, SigningOptions
+from quara.creds.manager.interfaces import Authorities, Store
+from quara.creds.nebula.interfaces import (
+    CACertificate,
+    EncryptionKeyPair,
+    NodeCertificate,
+    SigningOptions,
+)
+from quara.creds.nebula.interfaces.keys import PublicEncryptionKey
 
 
 @dataclass
@@ -81,7 +86,18 @@ class FileStorageBackend(Store):
             raise FileNotFoundError(keyfile)
         return EncryptionKeyPair.from_file(keyfile)
 
-    def get_signing_certificate(self, authority: str) -> Certificate:
+    def get_public_key(self, name: str) -> PublicEncryptionKey:
+        keyfile = self.settings.keys.joinpath(f"{name}.key").expanduser()
+        if not keyfile.exists():
+            pubfile = self.settings.keys.joinpath(f"{name}.pub").expanduser()
+            if not pubfile.exists():
+                raise FileNotFoundError(keyfile)
+            else:
+                return PublicEncryptionKey.from_file(pubfile)
+        else:
+            return EncryptionKeyPair.from_file(keyfile).public_key
+
+    def get_signing_certificate(self, authority: str) -> CACertificate:
         """Get a single signing certificate (CA certificate) from name"""
         ca_crt_file = self.settings.signing_certificates.joinpath(
             f"{authority}.crt"
@@ -93,12 +109,12 @@ class FileStorageBackend(Store):
             authority_infos = authorities[authority]
             crt_url = authority_infos.certificate
             response = requests.get(crt_url)
-            crt = Certificate.from_bytes(response.content)
+            crt = CACertificate.from_bytes(response.content)
             self.save_signing_certificate(authority, crt)
 
-        return Certificate.from_file(ca_crt_file)
+        return CACertificate.from_file(ca_crt_file)
 
-    def get_certificate(self, authority: str, name: str) -> Certificate:
+    def get_certificate(self, authority: str, name: str) -> NodeCertificate:
         """Get a single node certificate issued by given authority with given name"""
         crt_file = (
             self.settings.certificates.joinpath(authority)
@@ -107,7 +123,7 @@ class FileStorageBackend(Store):
         )
         if not crt_file.exists():
             raise FileNotFoundError(crt_file)
-        return Certificate.from_file(crt_file)
+        return NodeCertificate.from_file(crt_file)
 
     def get_signing_request(self, authority: str, name: str) -> SigningOptions:
         """Get a single signing certificate request for given authority with given name"""
@@ -123,7 +139,7 @@ class FileStorageBackend(Store):
         return SigningOptions(**csr_data)
 
     def save_signing_certificate(
-        self, authority: str, certificate: Certificate
+        self, authority: str, certificate: CACertificate
     ) -> None:
         """Save a signing certificate."""
         output = self.settings.signing_certificates.joinpath(
@@ -141,7 +157,7 @@ class FileStorageBackend(Store):
         output.parent.mkdir(exist_ok=True, parents=True)
         output.write_bytes(dumps(asdict(options), indent=2).encode("utf-8"))
 
-    def save_certificate(self, authority: str, certificate: Certificate) -> None:
+    def save_certificate(self, authority: str, certificate: NodeCertificate) -> None:
         """Save a node certificate."""
         output = (
             self.settings.certificates.joinpath(authority)
@@ -156,14 +172,49 @@ class FileStorageBackend(Store):
         private_output.parent.mkdir(exist_ok=True, parents=True)
         keypair.write_private_key(private_output)
 
+    def save_public_key(self, name: str, public_key: PublicEncryptionKey) -> None:
+        public_output = self.settings.keys.joinpath(f"{name}.pub").expanduser()
+        public_output.parent.mkdir(exist_ok=True, parents=True)
+        public_key.write_public_key(public_output)
+
+    def delete_signing_certificate(self, authority: str, name: str) -> None:
+        """Delete a signing certificate from store"""
+        (
+            self.settings.signing_certificates.joinpath(f"{authority}.crt")
+            .expanduser()
+            .unlink(missing_ok=True)
+        )
+
+    def delete_signing_request(self, authority: str, name: str) -> None:
+        """Delete a signing request from store"""
+        (
+            self.settings.signing_requests.joinpath(authority)
+            .joinpath(f"{name}.json")
+            .expanduser()
+            .unlink(missing_ok=True)
+        )
+
+    def delete_certificate(self, authority: str, name: str) -> None:
+        """Delete a node certificate from store"""
+        (
+            self.settings.certificates.joinpath(authority)
+            .joinpath(f"{name}.crt")
+            .expanduser()
+            .unlink(missing_ok=True)
+        )
+
+    def delete_keypair(self, name: str) -> None:
+        """Delete an encryption keypair from store"""
+        self.settings.keys.joinpath(f"{name}.key").expanduser().unlink(missing_ok=True)
+
     def iterate_certificates(
         self,
         authority: str,
-    ) -> t.Iterator[Certificate]:
+    ) -> t.Iterator[NodeCertificate]:
         for file in (
             self.settings.certificates.joinpath(authority).expanduser().glob("*.crt")
         ):
-            yield Certificate.from_file(file)
+            yield NodeCertificate.from_file(file)
 
     def iterate_certificate_requests(
         self,
@@ -181,3 +232,7 @@ class FileStorageBackend(Store):
     def iterate_keypairs(self) -> t.Iterator[t.Tuple[str, EncryptionKeyPair]]:
         for file in self.settings.keys.expanduser().glob("*.key"):
             yield file.stem, EncryptionKeyPair.from_file(file)
+
+    def iterate_public_keys(self) -> t.Iterator[t.Tuple[str, PublicEncryptionKey]]:
+        for file in self.settings.keys.expanduser().glob("*.pub"):
+            yield file.stem, PublicEncryptionKey.from_file(file)
