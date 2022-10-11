@@ -25,12 +25,19 @@ def generate_cmd(
         envvar="PYNC_NEBULA_CONFIG",
     ),
     name: t.Optional[str] = typer.Option(
-        None, "--name", "-n", help="Name of keypair to use in configuration"
+        None,
+        "--name",
+        "-n",
+        help="Name of keypair and certificates to use in configuration",
     ),
     ca: t.Optional[str] = typer.Option(
-        None, "--ca", help="Certificate authority to use"
+        None, "--ca", help="Name of authority to fetch CA from"
     ),
 ) -> None:
+    """Generate a nebula configuration file with inlined PKI.
+
+    CA certificate, node certificates and node keypaire are embedded into configuration file.
+    """
     manager = get_manager(config, root)
 
     if ca:

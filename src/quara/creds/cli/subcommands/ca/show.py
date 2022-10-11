@@ -26,20 +26,21 @@ def show_cmd(
         None,
         "--name",
         "-n",
-        help="Name of CA to show. All certificates are shown by default.",
+        help="Name of authorities to show CA for. All authorities CA certificates are shown by default.",
     ),
     pem: bool = typer.Option(
         False,
         "--pem",
-        help="Display certificates in PEM format",
+        help="Display CA certificates in PEM format",
     ),
     raw: bool = typer.Option(False, "--raw", help="Display raw certificates"),
     json: bool = typer.Option(False, "--json", help="Display JSON certificates"),
 ) -> None:
-    """Describe a ca certificate.
+    """Describe CA certificates.
 
-    When --raw option certificate, the raw certificate is printed.
-    When --pem option is used, the PEM-encoded certificate is printed.
+    When --raw option certificate, the raw certificates are printed.
+
+    When --pem option is used, the PEM-encoded certificates are printed.
     """
     manager = get_manager(config, root)
     if name is None:

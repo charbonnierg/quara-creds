@@ -34,9 +34,11 @@ def show_cmd(
     raw: bool = typer.Option(False, "--raw", help="Display raw certificate"),
     json: bool = typer.Option(False, "--json", help="Display JSON certificate"),
 ) -> None:
-    """Describe a certificate.
+    """Describe a nebula node certificate.
 
-    When --raw option certificate, the raw certificate is printed.
+    When --raw option is provided, the raw certificate bytes are printed.
+
+    When --json option is provided, the certificate is printed in PEM format.
     """
     manager = get_manager(config, root)
 
@@ -64,7 +66,7 @@ def show_cmd(
             json_result.append(cert.to_dict())
             continue
         else:
-            table = Table(title=f"Nebula certificate (authority={authority})")
+            table = Table(title=f"Nebula node certificate (authority={authority})")
             table.add_column("Field")
             table.add_column("Value")
             for key, value in cert.to_dict().items():

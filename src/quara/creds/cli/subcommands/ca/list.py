@@ -22,7 +22,7 @@ def list_cmd(
         envvar="PYNC_NEBULA_CONFIG",
     ),
 ) -> None:
-    """List certificates"""
+    """List nebula CA certificates"""
     manager = get_manager(config, root)
     # Create a new rich table
     table = Table(title="Nebula CA certificates")

@@ -23,15 +23,17 @@ def list_cmd(
         envvar="PYNC_NEBULA_CONFIG",
     ),
     authority: str = typer.Option(
-        None, "--ca", help="Name of CA used to sign the certificate"
+        None,
+        "--ca",
+        help="Name of authority used to sign the certificate. By default all authorities are used.",
     ),
 ) -> None:
-    """List certificates"""
+    """List nebula node certificates"""
     if config is not None:
         manager = NebulaCertManager.from_config_file(config)
     else:
         manager = NebulaCertManager.from_root(root)
-    table = Table(title="Nebula certificates")
+    table = Table(title="Nebula node certificates")
     table.add_column("Authority")
     table.add_column("Name")
     table.add_column("IP")

@@ -13,8 +13,8 @@ def sign_cmd(
         "-n",
         help="name of the certificate authority as indicated in CA certificates",
     ),
-    duration: str = typer.Option(
-        "26280h",
+    duration: t.Optional[str] = typer.Option(
+        None,
         "--duration",
         "-d",
         help=(
@@ -62,7 +62,7 @@ def sign_cmd(
         help="Path to file where CA certificate will be written",
     ),
 ) -> None:
-    """Create a CA certificate."""
+    """Create a new CA certificate."""
     options = create_signing_ca_options(
         name=name,
         ips=ips,

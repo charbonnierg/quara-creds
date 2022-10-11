@@ -23,14 +23,21 @@ def verify_cmd(
         envvar="PYNC_NEBULA_CONFIG",
     ),
     authority: t.Optional[str] = typer.Option(
-        None, "--ca", help="Name of CA used to verify the certificate"
+        None,
+        "--ca",
+        help="Name of authority for which issued certificates should be verifited. By default certificates issued by all authorities are verified.",
     ),
-    name: t.Optional[str] = typer.Option(None, "--name", "-n", help="Certificate name"),
+    name: t.Optional[str] = typer.Option(
+        None, "--name", "-n", help="Name of certificate managed by pync"
+    ),
     path: t.Optional[str] = typer.Option(
-        None, "--path", "-p", help="Path to certificate"
+        None,
+        "--path",
+        "-p",
+        help="Path to certificate (useful when certificate is not managed by pync)",
     ),
 ) -> None:
-    """Verify one or several certificates."""
+    """Verify one or several certificates issued by authorities."""
     manager = get_manager(config, root)
 
     name = name or manager.default_user

@@ -34,13 +34,16 @@ def sign_cmd(
         envvar="PYNC_NEBULA_CONFIG",
     ),
     authority: str = typer.Option(
-        None, "--ca", help="Name of CA used to sign the certificate"
+        None, "--ca", help="Name of authority used to sign the certificate"
     ),
     name: t.Optional[str] = typer.Option(
-        None, "--name", "-n", help="name of the certificate"
+        None, "--name", "-n", help="Name for which certificate is issued"
     ),
     public_key: t.Optional[str] = typer.Option(
-        None, "--public-key", "--pub", help="Certificate public key"
+        None,
+        "--public-key",
+        "--pub",
+        help="Certificate public key. Useful when emitting certificate for a non-managed keypair.",
     ),
     duration: str = typer.Option(
         None,
@@ -80,7 +83,17 @@ def sign_cmd(
         help="Overwrite certificat if it already exists, even if certificate is still valid",
     ),
 ) -> None:
-    """Create a certificate."""
+    """Create a new nebula node certificate.
+
+    Certificate will be created according to signin request.
+
+    Use the --update option to provide new signing options and update the signing
+    request before signing the certificate.
+
+    When --public-key option is provided, option value is used as public key.
+
+    When --public-key is omitted, public key is retrieved from store, or created when not found.
+    """
     manager = get_manager(config, root)
 
     name = name or manager.default_user
@@ -225,7 +238,7 @@ def sign_cmd(
 
         manager.storage.save_certificate(authority=authority, certificate=crt)
 
-        table = Table(title="Nebula certificate")
+        table = Table(title=f"Nebula node certificate (authority={authority}")
         table.add_column("Field")
         table.add_column("Value")
         for key, value in crt.to_dict().items():

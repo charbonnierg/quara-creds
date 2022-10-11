@@ -18,16 +18,18 @@ def rm_cmd(
         envvar="PYNC_NEBULA_CONFIG",
     ),
     authority: str = typer.Option(
-        None, "--ca", help="Name of CA used to sign the certificate"
+        None,
+        "--ca",
+        help="Name of authority which issued certificate. By default certificate is removed for all authorities.",
     ),
     name: t.Optional[str] = typer.Option(
         None,
         "--name",
         "-n",
-        help="Keypair name. Current username is used when not provided.",
+        help="Certificate name. Current username is used when not provided.",
     ),
 ) -> None:
-    """Remove certificates by name"""
+    """Remove nebula node certificates by name"""
     manager = get_manager(config, root)
 
     name = name or manager.default_user

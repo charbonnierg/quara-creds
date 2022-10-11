@@ -31,7 +31,7 @@ def list_cmd(
         manager = NebulaCertManager.from_config_file(config)
     else:
         manager = NebulaCertManager.from_root(root)
-    table = Table(title="Nebula certificates")
+    table = Table(title="Nebula signing options")
     table.add_column("Authority")
     table.add_column("Name")
     table.add_column("IP")

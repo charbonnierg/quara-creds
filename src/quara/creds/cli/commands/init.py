@@ -24,11 +24,9 @@ def init_cmd(
     ),
     force: bool = typer.Option(False, "--force", help="Overwrite existing config"),
 ) -> None:
-    """Display environment used by pync.
+    """Initialize pync environment. By default no authorities are configured.
 
-    The "Set" column indicate if variable is configured through environment variable, or using default value.
-
-    The "Set" column is `True` when variable is a default value derived from a user-configured value.
+    Use the --authorities option to import authorities from a file or an URL.
     """
     # Gather root directory
     storage_root = Path(root) if root else Path("~/.nebula")

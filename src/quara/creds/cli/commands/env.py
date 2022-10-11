@@ -20,12 +20,7 @@ def env_cmd(
         envvar="PYNC_NEBULA_CONFIG",
     ),
 ) -> None:
-    """Display environment used by pync.
-
-    The "Set" column indicate if variable is configured through environment variable, or using default value.
-
-    The "Set" column is `True` when variable is a default value derived from a user-configured value.
-    """
+    """Display environment used by pync"""
     # Initialize manager
     manager = get_manager(config, root)
     # Create a new rich table
