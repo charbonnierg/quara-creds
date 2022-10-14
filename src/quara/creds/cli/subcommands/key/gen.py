@@ -4,7 +4,7 @@ import typing as t
 import typer
 
 from quara.creds.cli.utils import get_manager
-from quara.creds.nebula.api import create_encryption_keypair
+from quara.creds.manager import errors
 
 
 def gen_cmd(
@@ -24,29 +24,20 @@ def gen_cmd(
         "-n",
         help="Keypair name. Current username is used when not provided.",
     ),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Overwrite files if they already exist."
+    update: bool = typer.Option(
+        False, "--update", "-U", help="Overwrite files if they already exist."
     ),
 ) -> None:
-    """Create a new public key and associated private key"""
+    """Create a new nebula X25519 keypair and save it within store."""
     manager = get_manager(config, root)
-
-    keypair = create_encryption_keypair()
-    name = name or manager.default_user
     try:
-        manager.storage.get_keypair(name)
-    except FileNotFoundError:
-        pass
+        manager.keys.gen(name=name, update=update)
+    except errors.KeyPairExistsError:
+        typer.echo(f"Error: a keypair named {name} already exists", err=True)
+        typer.echo(
+            "\nThe '--update' or '-U' option can be used to overwrite existing keypair.",
+            err=True,
+        )
+        raise typer.Exit(1)
     else:
-        if not force:
-            typer.echo(f"Error: a keypair named {name} already exists", err=True)
-            typer.echo(
-                "\nThe '--force' or '-f' option can be used to force overwrite.",
-                err=True,
-            )
-            raise typer.Exit(1)
-    manager.storage.save_keypair(
-        name=name,
-        keypair=keypair,
-    )
-    raise typer.Exit(0)
+        raise typer.Exit(0)

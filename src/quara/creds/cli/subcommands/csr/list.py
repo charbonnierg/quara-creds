@@ -6,7 +6,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from quara.creds.manager import NebulaCertManager
+from quara.creds.cli.utils import get_manager
 
 console = Console()
 
@@ -22,15 +22,21 @@ def list_cmd(
         help="pync configuration file",
         envvar="PYNC_NEBULA_CONFIG",
     ),
-    authority: str = typer.Option(
+    authorities: t.Optional[str] = typer.Option(
         None, "--ca", help="Name of CA used to sign the certificate"
     ),
+    names: t.Optional[str] = typer.Option(
+        None, "--name", "-n", help="Name of certificate"
+    ),
+    json: bool = typer.Option(False, "--json", help="Display output in JSON format"),
 ) -> None:
     """List certificate signing requests"""
-    if config is not None:
-        manager = NebulaCertManager.from_config_file(config)
-    else:
-        manager = NebulaCertManager.from_root(root)
+    manager = get_manager(config, root)
+
+    if json:
+        typer.echo(manager.csr.export(authorities=authorities, names=names))
+        raise typer.Exit(0)
+
     table = Table(title="Nebula signing options")
     table.add_column("Authority")
     table.add_column("Name")
@@ -39,30 +45,23 @@ def list_cmd(
     table.add_column("Subnets")
     table.add_column("Duration")
 
-    if authority is None:
-        authorities = list(manager.authorities)
-    else:
-        authorities = [authority]
-
     user_rows: t.Dict[str, t.List[t.Tuple[str, ...]]] = defaultdict(list)
 
-    for authority in authorities:
-        for options in manager.storage.iterate_certificate_requests(
-            authority=authority
-        ):
-            user_rows[options.Name].append(
-                (
-                    authority,
-                    options.Name,
-                    options.Ip,
-                    ", ".join(options.Groups),
-                    ", ".join(options.Subnets) or "*",
-                    options.NotAfter,
-                )
+    for csr in manager.csr.list(authorities=authorities, names=names):
+        user_rows[csr.options.Name].append(
+            (
+                csr.authority,
+                csr.options.Name,
+                csr.options.Ip,
+                ", ".join(csr.options.Groups),
+                ", ".join(csr.options.Subnets) or "*",
+                csr.options.NotAfter,
             )
+        )
 
     for rows in user_rows.values():
         for row in rows:
             table.add_row(*row)
+
     console.print(table)
     raise typer.Exit(0)

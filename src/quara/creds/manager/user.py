@@ -15,7 +15,7 @@ class UsernameProvider:
     su -c "python3 -c 'import getpass; print(getpass.getuser())'" root
     ```
 
-    print current username instead of printing `root`.
+    prints the current username instead of printing `root`.
     """
 
     def __init__(self) -> None:

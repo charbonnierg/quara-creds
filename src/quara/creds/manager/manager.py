@@ -5,7 +5,11 @@ from pathlib import Path
 from quara.creds.manager.adapters.storages.file_storage import FileStorageBackend
 
 from .adapters.storages import create_store
-from .settings import SettingsProvider
+from .settings import FileNebulaSettingsProvider, NebulaSettingsProvider
+from .usecases.certs import ManagedCertificates
+from .usecases.config import ManagedConfig
+from .usecases.csr import ManagedSigningRequests
+from .usecases.keys import ManagedKeys
 from .user import UsernameProvider
 
 
@@ -15,13 +19,17 @@ class NebulaCertManager:
 
     def __init__(
         self,
-        settings_provider: SettingsProvider,
+        settings_provider: NebulaSettingsProvider,
         username_provider: UsernameProvider,
     ) -> None:
         """A NebulaCertManager is initialized using a root repository"""
         self.username_provider = username_provider
         self.settings_provider = settings_provider
         self.reload_settings()
+        self.keys = ManagedKeys(self)
+        self.csr = ManagedSigningRequests(self)
+        self.certificates = ManagedCertificates(self)
+        self.nebula_config = ManagedConfig(self)
 
     @classmethod
     def from_root(cls, root: t.Union[str, Path, None] = None) -> "NebulaCertManager":
@@ -31,8 +39,10 @@ class NebulaCertManager:
 
     @classmethod
     def from_config_file(cls, filepath: t.Union[str, Path]) -> "NebulaCertManager":
-        config_provider = SettingsProvider(filepath)
-        return cls(config_provider, username_provider=UsernameProvider())
+        settings_provider = FileNebulaSettingsProvider(filepath)
+        return cls(
+            settings_provider=settings_provider, username_provider=UsernameProvider()
+        )
 
     def reload_settings(self) -> None:
         """Reload configuration."""

@@ -17,7 +17,7 @@ def rm_cmd(
         help="pync configuration file",
         envvar="PYNC_NEBULA_CONFIG",
     ),
-    authority: str = typer.Option(
+    authorities: str = typer.Option(
         None, "--ca", help="Name of CA used to sign the certificate"
     ),
     name: t.Optional[str] = typer.Option(
@@ -29,14 +29,5 @@ def rm_cmd(
 ) -> None:
     """Remove certificate signing request by name"""
     manager = get_manager(config, root)
-
-    name = name or manager.default_user
-    # Gather list of authorities used to issue certificates
-    if authority is None:
-        authorities = list(manager.authorities)
-    else:
-        authorities = [authority]
-    for authority in authorities:
-        manager.storage.delete_signing_request(authority=authority, name=name)
-
+    manager.csr.remove(name=name, authorities=authorities)
     raise typer.Exit(0)

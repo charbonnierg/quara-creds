@@ -20,6 +20,6 @@ def create_store(options: t.Mapping[str, t.Mapping[str, t.Any]]) -> Store:
                 FileStorageOptions,
             )
 
-            return FileStorageBackend(FileStorageOptions(**options["files"]))
+            return Store(FileStorageBackend(FileStorageOptions(**options["files"])))
         else:
             raise ValueError("Invalid file storage options")

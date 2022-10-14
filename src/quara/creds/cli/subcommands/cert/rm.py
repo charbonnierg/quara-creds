@@ -17,7 +17,7 @@ def rm_cmd(
         help="pync configuration file",
         envvar="PYNC_NEBULA_CONFIG",
     ),
-    authority: str = typer.Option(
+    authorities: str = typer.Option(
         None,
         "--ca",
         help="Name of authority which issued certificate. By default certificate is removed for all authorities.",
@@ -31,14 +31,4 @@ def rm_cmd(
 ) -> None:
     """Remove nebula node certificates by name"""
     manager = get_manager(config, root)
-
-    name = name or manager.default_user
-    # Gather list of authorities used to issue certificates
-    if authority is None:
-        authorities = list(manager.authorities)
-    else:
-        authorities = [authority]
-    for authority in authorities:
-        manager.storage.delete_certificate(authority=authority, name=name)
-
-    raise typer.Exit(0)
+    manager.certificates.remove(name=name, authorities=authorities)

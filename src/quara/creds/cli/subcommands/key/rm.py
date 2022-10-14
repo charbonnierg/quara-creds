@@ -26,6 +26,4 @@ def rm_cmd(
 ) -> None:
     """Create a new public key and associated private key"""
     manager = get_manager(config, root)
-    name = name or manager.default_user
-    manager.storage.delete_keypair(name=name)
-    raise typer.Exit(0)
+    manager.keys.remove(name)

@@ -2,10 +2,18 @@
 import typing as t
 from pathlib import Path
 
+import click
+import requests
 import typer
 
 from quara.creds.cli.utils import get_manager
-from quara.creds.nebula.api import parse_encryption_keypair, read_encryption_keypair
+
+
+def get_key_data(value: str) -> str:
+    if not value and not click.get_text_stream("stdin").isatty():
+        return click.get_text_stream("stdin").read().strip()
+    else:
+        return value
 
 
 def import_cmd(
@@ -25,42 +33,67 @@ def import_cmd(
         "-n",
         help="Keypair name. Current username is used when not provided.",
     ),
-    private_key: str = typer.Option(
-        ...,
-        "--key",
-        "-k",
-        help="Private bytes or path to private key",
+    data: t.Optional[str] = typer.Argument(
+        None,
+        help="Private or public key data. Can also be parsed from stdin.",
+        callback=get_key_data,
     ),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Overwrite files if they already exist."
+    file: t.Optional[str] = typer.Option(
+        None,
+        "--file",
+        "-f",
+        help="Path to private or public key file.",
+    ),
+    url: t.Optional[str] = typer.Option(
+        None, "--url", "-u", help="URL pointing to private or public key data."
+    ),
+    private: bool = typer.Option(
+        False,
+        "--private",
+        help="Import private key. False by default, which means that a public key is expected.",
+    ),
+    update: bool = typer.Option(
+        False, "--update", "-U", help="Overwrite files if they already exist."
     ),
 ) -> None:
-    """Import an existing keypair using private bytes or path to private key file"""
-    manager = get_manager(config, root)
-    try:
-        if Path(private_key).exists():
-            keypair = read_encryption_keypair(private_key)
-        else:
-            keypair = parse_encryption_keypair(private_key)
-    except Exception as exc:
-        typer.echo(f"Failed to load keypair: {str(exc)}", err=True)
-        raise typer.Exit(1)
+    """Import an existing public key or private key into store.
 
-    name = name or manager.default_user
-    try:
-        manager.storage.get_keypair(name)
-    except FileNotFoundError:
-        pass
-    else:
-        if not force:
-            typer.echo(f"Error: a keypair named {name} already exists", err=True)
+    Key data must be provided through stdin, or through one of
+     --data, --file, and --url option.
+    """
+    manager = get_manager(config, root)
+
+    if file:
+        filepath = Path(file).expanduser()
+        if not filepath.exists():
+            typer.echo(f"File does not exist: {filepath.as_posix()}", err=True)
+            raise typer.Exit(1)
+        data = filepath.read_bytes()
+    elif url:
+        response = requests.get(url)
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as exc:
             typer.echo(
-                "\nThe '--force' or '-f' option can be used to force overwrite.",
-                err=True,
+                f"Failed to fetch keypair due to HTTP error: {str(exc)}", err=True
             )
             raise typer.Exit(1)
-    manager.storage.save_keypair(
-        name=name,
-        keypair=keypair,
-    )
-    raise typer.Exit(0)
+        data = response.content
+    elif data is None:
+        typer.echo("Either --data, --path or --url option must be provided", err=True)
+        raise typer.Exit(1)
+
+    if private:
+        try:
+            manager.keys.add_keypair(data, name=name, update=update)
+        except Exception as exc:
+            typer.echo(f"Failed to import private key: {str(exc)}", err=True)
+            raise typer.Exit(1)
+        else:
+            raise typer.Exit(0)
+
+    try:
+        manager.keys.add_public_key(data, name=name, update=update)
+    except Exception as exc:
+        typer.echo(f"Failed to import public key: {str(exc)}", err=True)
+        raise typer.Exit(1)

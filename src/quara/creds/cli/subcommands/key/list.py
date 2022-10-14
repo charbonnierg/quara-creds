@@ -1,6 +1,5 @@
 """pync key list command"""
 import typing as t
-from json import dumps
 
 import typer
 from rich.console import Console
@@ -21,38 +20,46 @@ def list_cmd(
         help="pync configuration file",
         envvar="PYNC_NEBULA_CONFIG",
     ),
+    private: bool = typer.Option(
+        False,
+        "--private",
+        help="List private keys. False by default, which means that a public key is expected.",
+    ),
     json: bool = typer.Option(False, "--json", help="Return results in JSON format"),
 ) -> None:
-    """List keys"""
+    """List public or private keys"""
     manager = get_manager(config, root)
 
-    table = Table(title="Nebula X25519 keypairs")
-    table.add_column("Name", justify="left")
-    table.add_column("Public key", justify="left")
-    table.add_column("Private key is stored", justify="left")
     if json:
-        results: t.List[t.Dict[str, str]] = []
-        for name, keypair in manager.storage.iterate_keypairs():
-            results.append(
-                {
-                    "name": name,
-                    "public_key": keypair.to_public_bytes().hex(),
-                }
-            )
-        for name, pubkey in manager.storage.iterate_public_keys():
-            results.append(
-                {
-                    "name": name,
-                    "public_key": pubkey.to_public_bytes().hex(),
-                }
-            )
-        typer.echo(dumps(results, indent=2))
+        if private:
+            typer.echo(manager.keys.export_keypairs())
+        else:
+            typer.echo(manager.keys.export_public_keys())
         raise typer.Exit(0)
 
-    for name, keypair in manager.storage.iterate_keypairs():
-        table.add_row(name, keypair.to_public_bytes().hex(), "Yes")
-    for name, pubkey in manager.storage.iterate_public_keys():
-        table.add_row(name, pubkey.to_public_bytes().hex(), "No")
+    if private:
+        table = Table(title="Nebula X25519 keypairs")
+        table.add_column("Name")
+        table.add_column("Public key")
+        table.add_column("Private key")
+        for name, keypair in manager.storage.find_keypairs():
+            table.add_row(
+                name, keypair.to_public_bytes().hex(), keypair.to_private_bytes().hex()
+            )
+        console.print(table)
+        raise typer.Exit(0)
+
+    table = Table(title="Nebula X25519 public keys")
+    table.add_column("Name")
+    table.add_column("Public key")
+    table.add_column("Private key is stored")
+    known_keypairs = manager.keys.list_keypairs()
+    for name, pubkey in manager.storage.find_public_keys():
+        is_stored = (
+            "Yes" if (name, pubkey.to_public_bytes()) in known_keypairs else "No"
+        )
+        table.add_row(name, pubkey.to_public_bytes().hex(), is_stored)
+
     console.print(table)
 
     raise typer.Exit(0)

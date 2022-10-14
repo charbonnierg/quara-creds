@@ -1,17 +1,13 @@
-"""pync csr update command"""
+"""pync csr import command"""
 import typing as t
 
 import typer
-from rich.console import Console
 
 from quara.creds.cli.utils import get_manager
-from quara.creds.manager.errors import CertificateNotFoundError
 from quara.creds.nebula.errors import InvalidSigningOptionError
 
-console = Console()
 
-
-def update_cmd(
+def add_cmd(
     root: t.Optional[str] = typer.Option(
         None, "--root", "-r", help="Nebula root directory", envvar="PYNC_NEBULA_ROOT"
     ),
@@ -28,6 +24,14 @@ def update_cmd(
     name: t.Optional[str] = typer.Option(
         None, "--name", "-n", help="name of the certificate"
     ),
+    activation: str = typer.Option(
+        None,
+        "--not-before",
+        help=(
+            "amount of time before the certificate should be valid. "
+            'Valid time units are seconds: "s", minutes: "m", hours: "h"'
+        ),
+    ),
     duration: str = typer.Option(
         None,
         "--duration",
@@ -43,8 +47,8 @@ def update_cmd(
         "-g",
         help="comma separated list of groups. This will limit which groups subordinate certs can use",
     ),
-    ip: t.Optional[str] = typer.Option(
-        None,
+    ip: str = typer.Option(
+        ...,
         "--ip",
         "-i",
         help=("IP address and network in CIDR notation. "),
@@ -58,20 +62,26 @@ def update_cmd(
         ),
     ),
 ) -> None:
-    """Update certificate request"""
+    """Add a new signing request"""
     manager = get_manager(config, root)
+    for csr in manager.csr.list(
+        authorities=authorities, names=name or manager.default_user
+    ):
+        typer.echo(
+            f"Signing request already exist for authority {csr.authority} and name {csr.options.Name}",
+            err=True,
+        )
+        raise typer.Exit(1)
     try:
         manager.csr.update(
             name=name,
             authorities=authorities,
-            duration=duration,
-            groups=groups,
             ip=ip,
+            duration=duration,
+            activation=activation,
+            groups=groups,
             subnets=subnets,
         )
-    except CertificateNotFoundError as exc:
-        typer.echo(f"Invalid authority: {str(exc)}")
-        raise typer.Exit(1)
     except InvalidSigningOptionError as exc:
-        typer.echo(f"Invalid signing options: {str(exc)}")
+        typer.echo(f"Invalid signing options: {str(exc)}", err=True)
         raise typer.Exit(1)

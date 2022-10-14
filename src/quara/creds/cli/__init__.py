@@ -1,6 +1,6 @@
 import typer
 
-from .commands import env_cmd, init_cmd, version
+from .commands import env_cmd, init_cmd, run_cmd, version
 from .subcommands import authorities_app, ca_app, cert_app, config_app, csr_app, key_app
 
 app = typer.Typer(
@@ -30,3 +30,4 @@ app.add_typer(key_app)
 
 app.command("env")(env_cmd)
 app.command("init")(init_cmd)
+app.command("nebula")(run_cmd)

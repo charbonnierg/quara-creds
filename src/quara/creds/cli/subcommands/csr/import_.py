@@ -3,11 +3,19 @@ import typing as t
 from json import loads
 from pathlib import Path
 
+import click
 import requests
 import typer
 
 from quara.creds.cli.utils import get_manager
 from quara.creds.nebula.interfaces import SigningOptions
+
+
+def get_csr_data(value: str) -> str:
+    if not value and not click.get_text_stream("stdin").isatty():
+        return click.get_text_stream("stdin").read().strip()
+    else:
+        return value
 
 
 def import_cmd(
@@ -21,74 +29,71 @@ def import_cmd(
         help="pync configuration file",
         envvar="PYNC_NEBULA_CONFIG",
     ),
-    authority: str = typer.Option(
-        None, "--ca", help="Name of CA used to sign the certificate"
-    ),
-    name: t.Optional[str] = typer.Option(
+    data: t.Optional[str] = typer.Argument(
         None,
-        "--name",
-        "-n",
-        help="Keypair name. Current username is used when not provided.",
+        help="Signing requests as JSON string. Can be parsed from stdin.",
+        callback=get_csr_data,
     ),
-    uri: str = typer.Option(
-        ...,
-        "--uri",
+    file: t.Optional[str] = typer.Option(
+        None, "--file", "-f", help="Filepath holding signing options in JSON format."
+    ),
+    url: t.Optional[str] = typer.Option(
+        None,
+        "--url",
         "-u",
-        help="URI pointing to options or path to options",
+        help="URL pointing to options or path to signing options",
     ),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Overwrite files if they already exist."
+    update: bool = typer.Option(
+        False, "--update", "-U", help="Overwrite files if they already exist."
     ),
 ) -> None:
     """Import signing options from URL or path"""
     manager = get_manager(config, root)
-    name = name or manager.default_user
-    # Gather list of authorities used to issue certificates
-    if authority is None:
-        authorities = list(manager.authorities)
-    else:
-        authorities = [authority]
-    try:
-        if uri.startswith("file://"):
-            uri = uri[7:]
-            uri_path = Path(uri).expanduser()
-            if uri_path.exists():
-                options = SigningOptions(**loads(uri_path.read_bytes()))
-            else:
-                typer.echo(f"File not found: {uri_path.as_posix()}", err=True)
-                raise typer.Exit(1)
-        elif uri.startswith("http://") or uri.startswith("https://"):
-            options = SigningOptions(requests.get(uri_path))
-        else:
-            uri_path = Path(uri).expanduser()
-            if uri_path.exists():
-                options = SigningOptions(**loads(uri_path.read_bytes()))
-            else:
-                typer.echo(f"File not found: {uri_path.as_posix()}", err=True)
-                raise typer.Exit(1)
-    except Exception as exc:
-        typer.echo(f"Failed to load options: {str(exc)}", err=True)
+
+    if file:
+        filepath = Path(file).expanduser()
+        if not filepath.exists():
+            typer.echo(f"File does not exist: {filepath.as_posix()}", err=True)
+            raise typer.Exit(1)
+        data = filepath.read_bytes()
+    elif url:
+        response = requests.get(url)
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as exc:
+            typer.echo(
+                f"Failed to fetch signing options due to HTTP error: {str(exc)}",
+                err=True,
+            )
+            raise typer.Exit(1)
+        data = response.content
+    elif data is None:
+        typer.echo(
+            "Either JSON argument, --path or --url option must be provided", err=True
+        )
         raise typer.Exit(1)
 
-    for authority in authorities:
-        try:
-            manager.storage.get_signing_request(authority, name)
-        except FileNotFoundError:
-            pass
-        else:
-            if not force:
-                typer.echo(
-                    f"Error: a signing request named {name} already exists for authority {authority}",
-                    err=True,
-                )
-                typer.echo(
-                    "\nThe '--force' or '-f' option can be used to force overwrite.",
-                    err=True,
-                )
-                raise typer.Exit(1)
-        manager.storage.save_signing_request(
-            name=name,
+    json_data = loads(data or [])
+    if isinstance(json_data, list):
+        for csr_data in json_data:
+            options = SigningOptions(**csr_data["options"])
+            authority = csr_data["authority"]
+            cert_name = csr_data["user"]
+            manager.csr.add(
+                options=options,
+                name=cert_name,
+                authorities=authority,
+                update=update,
+            )
+    else:
+        options = SigningOptions(**json_data["options"])
+        authority = json_data["authority"]
+        cert_name = json_data["user"]
+        manager.csr.add(
             options=options,
+            name=cert_name,
+            authorities=authority,
+            update=update,
         )
 
     raise typer.Exit(0)

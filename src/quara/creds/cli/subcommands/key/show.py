@@ -4,6 +4,7 @@ import typing as t
 import typer
 
 from quara.creds.cli.utils import get_manager
+from quara.creds.manager import errors
 
 
 def show_cmd(
@@ -21,6 +22,11 @@ def show_cmd(
     raw: bool = typer.Option(
         None, "--raw", help="Show raw public bytes instead of PEM encoded key"
     ),
+    json: bool = typer.Option(
+        None,
+        "--json",
+        help="Show raw public bytes in JSON object",
+    ),
     private: bool = typer.Option(
         False, "--private", help="Show private key instead of public key"
     ),
@@ -28,20 +34,21 @@ def show_cmd(
     """Show a single key"""
     manager = get_manager(config, root)
 
-    name = name or manager.default_user
+    if private:
+        try:
+            typer.echo(manager.keys.show_private_key(name=name, raw=raw, json=json))
+        except errors.KeyPairNotFoundError:
+            typer.echo(f"Private key not found: {name or manager.default_user}")
+            raise typer.Exit(1)
+        else:
+            raise typer.Exit(0)
+
     try:
-        keypair = manager.storage.get_keypair(name)
-    except FileNotFoundError:
-        typer.echo(f"No private key found for user: {name or manager.default_user}")
+        typer.echo(manager.keys.show_public_key(name=name, raw=raw, json=json))
+    except errors.PublicKeyNotFoundError as exc:
+        typer.echo(
+            f"Public key not found: {name or manager.default_user}. Error: {str(exc)}"
+        )
         raise typer.Exit(1)
-    if raw:
-        if not private:
-            typer.echo(keypair.to_public_bytes().hex())
-        else:
-            typer.echo(keypair.to_private_bytes().hex())
     else:
-        if not private:
-            typer.echo(keypair.to_public_pem_data().decode("utf-8"))
-        else:
-            typer.echo(keypair.to_private_pem_data().decode("utf-8"))
-    raise typer.Exit(0)
+        raise typer.Exit(0)
