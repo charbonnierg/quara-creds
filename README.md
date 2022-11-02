@@ -32,7 +32,7 @@ pync init --force
 - Configure authorities from a JSON file (either a path or an URL):
 
 ```bash
-pync init --authorities https://devquanebulajqtcetlst0.blob.core.windows.net/authorities/.well_known/authorities.json
+pync init --authorities https://example.com/authorities.json
 ```
 
 
