@@ -220,7 +220,7 @@ class Store:
                 raise errors.CertificateExistsError(
                     f"A CA certificate for authority '{authority}' already exists"
                 )
-        self.backend.save_signing_certificate(authority=authority, cert=certificate)
+        self.backend.save_signing_certificate(authority=authority, certificate=certificate)
 
     def save_signing_request(
         self, authority: str, options: SigningOptions, update: bool = False
