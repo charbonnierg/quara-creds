@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quara-creds"
-version = "0.10.2"
+version = "0.10.3"
 description = ""
 authors = ["charbonnierg <guillaume.charbonnier@araymond.com>"]
 readme = "README.md"
