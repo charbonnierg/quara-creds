@@ -181,7 +181,7 @@ class ManagedKeys:
     def export_keypairs(self) -> str:
         manager = self._manager
         results: t.List[t.Dict[str, str]] = []
-        for name, keypair in manager.storage.find_public_keys():
+        for name, keypair in manager.storage.find_keypairs():
             results.append(
                 {
                     "name": name,
